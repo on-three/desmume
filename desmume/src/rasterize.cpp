@@ -1125,6 +1125,7 @@ static void* SoftRasterizer_RunClearUsingValues(void *arg)
 
 static Render3D* SoftRasterizerRendererCreate()
 {
+#undef ENABLE_SSE2
 #if defined(ENABLE_AVX2)
 	return new SoftRasterizerRenderer_AVX2;
 #elif defined(ENABLE_SSE2)
