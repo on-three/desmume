@@ -4,16 +4,34 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "libdesmune-build",
+      "type": "shell",
+      "command": "pushd frontend/posix;make;popd",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
       "label": "cli-build",
       "type": "shell",
       "command": "pushd frontend/posix/cli;make;popd",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
       "label": "cli-clean",
       "type": "shell",
       "command": "pushd frontend/posix/cli;make clean;popd",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     }
   ]
 }
