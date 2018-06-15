@@ -22,7 +22,9 @@
 #include <SDL_thread.h>
 #include <stdlib.h>
 #include <string.h>
+#if !defined(__EMSCRIPTEN__)
 #include <glib.h>
+#endif
 
 #ifndef VERSION
 #define VERSION "Unknown version"
@@ -54,7 +56,9 @@
 #include "../rasterize.h"
 #include "../saves.h"
 #include "../frontend/modules/osd/agg/agg_osd.h"
+#if !defined(__EMSCRIPTEN__)
 #include "../shared/desmume_config.h"
+#endif
 #include "../commandline.h"
 #include "../slot2.h"
 #include "../utils/xstring.h"
@@ -164,6 +168,7 @@ init_config( class configured_features *config) {
 static int
 fill_config( class configured_features *config,
              int argc, char ** argv) {
+  #if !defined(__EMSCRIPTEN__)
   GOptionEntry options[] = {
     { "auto-pause", 0, 0, G_OPTION_ARG_NONE, &config->auto_pause, "Pause emulation if focus is lost", NULL},
     { "frameskip", 0, 0, G_OPTION_ARG_INT, &config->frameskip, "Set frameskip", "FRAMESKIP"},
@@ -236,7 +241,7 @@ fill_config( class configured_features *config,
     goto error;
   }
 #endif
-
+  #endif // __EMSCRIPTEN__
   return 1;
 
 error:
@@ -456,9 +461,11 @@ static void desmume_cycle(struct ctrls_event_config * cfg)
       SDL_JoystickEventState(SDL_ENABLE);
 
     /* There's an event waiting to be processed? */
+    #if !defined(__EMSCRIPTEN__)
     while ( !cfg->sdl_quit &&
         (SDL_PollEvent(&event) || (!cfg->focused && SDL_WaitEvent(&event))))
-      {
+    #endif
+    {
         process_ctrls_event( event, cfg);
     }
 
@@ -476,6 +483,11 @@ static void desmume_cycle(struct ctrls_event_config * cfg)
 }
 
 int main(int argc, char ** argv) {
+  
+  #if 1
+  printf("%s:%d:%s\n", __FILE__, __LINE__, __func__);
+  #endif
+  
   class configured_features my_config;
   struct ctrls_event_config ctrls_cfg;
 
@@ -483,7 +495,9 @@ int main(int argc, char ** argv) {
   int limiter_tick0 = 0;
   int error;
 
+  #if !defined(__EMSCRIPTEN__)
   GKeyFile *keyfile;
+  #endif
 
   int now;
 
@@ -573,9 +587,11 @@ int main(int argc, char ** argv) {
     slot2_Init();
     slot2_Change((NDS_SLOT2_TYPE)slot2_device_type);
 
+  #if !defined(__EMSCRIPTEN__)
   if ( !g_thread_supported()) {
     g_thread_init( NULL);
   }
+  #endif
 
   driver = new BaseDriver();
   
@@ -716,9 +732,13 @@ int main(int argc, char ** argv) {
 
   /* Initialize joysticks */
   if(!init_joy()) return 1;
+
+  #if !defined(__EMSCRIPTEN__)
   /* Load keyboard and joystick configuration */
   keyfile = desmume_config_read_file(cli_kb_cfg);
   desmume_config_dispose(keyfile);
+  #endif
+
   /* Since gtk has a different mapping the keys stop to work with the saved configuration :| */
   load_default_config(cli_kb_cfg);
 
