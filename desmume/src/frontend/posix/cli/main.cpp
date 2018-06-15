@@ -22,7 +22,12 @@
 #include <SDL_thread.h>
 #include <stdlib.h>
 #include <string.h>
+
 #if !defined(__EMSCRIPTEN__)
+#define USE_GLIB
+#endif
+
+#if defined(USE_GLIB)
 #include <glib.h>
 #endif
 
@@ -56,7 +61,7 @@
 #include "../rasterize.h"
 #include "../saves.h"
 #include "../frontend/modules/osd/agg/agg_osd.h"
-#if !defined(__EMSCRIPTEN__)
+#if defined(USE_GLIB)
 #include "../shared/desmume_config.h"
 #endif
 #include "../commandline.h"
@@ -168,7 +173,7 @@ init_config( class configured_features *config) {
 static int
 fill_config( class configured_features *config,
              int argc, char ** argv) {
-  #if !defined(__EMSCRIPTEN__)
+  #if  0 //defined(USE_GLIB)
   GOptionEntry options[] = {
     { "auto-pause", 0, 0, G_OPTION_ARG_NONE, &config->auto_pause, "Pause emulation if focus is lost", NULL},
     { "frameskip", 0, 0, G_OPTION_ARG_INT, &config->frameskip, "Set frameskip", "FRAMESKIP"},
@@ -199,11 +204,15 @@ fill_config( class configured_features *config,
     { NULL }
   };
 
+  #endif
+
   //g_option_context_add_main_entries (config->ctx, options, "options");
   config->parse(argc,argv);
 
   if(!config->validate())
     goto error;
+
+  #if defined(USE_GLIB)
 
   if (config->savetype < 0 || config->savetype > 6) {
     g_printerr("Accepted savetypes are from 0 to 6.\n");
@@ -241,7 +250,7 @@ fill_config( class configured_features *config,
     goto error;
   }
 #endif
-  #endif // __EMSCRIPTEN__
+  #endif // USE_GLIB
   return 1;
 
 error:
@@ -486,6 +495,10 @@ int main(int argc, char ** argv) {
   
   #if 1
   printf("%s:%d:%s\n", __FILE__, __LINE__, __func__);
+  for(int i = 0; i < argc; ++i)
+  {
+    printf("%s:%d:%s argv[%d] = %s\n", __FILE__, __LINE__, __func__, i, argv[i]);
+  }
   #endif
   
   class configured_features my_config;
@@ -495,7 +508,7 @@ int main(int argc, char ** argv) {
   int limiter_tick0 = 0;
   int error;
 
-  #if !defined(__EMSCRIPTEN__)
+  #if defined(USE_GLIB)
   GKeyFile *keyfile;
   #endif
 
@@ -587,7 +600,7 @@ int main(int argc, char ** argv) {
     slot2_Init();
     slot2_Change((NDS_SLOT2_TYPE)slot2_device_type);
 
-  #if !defined(__EMSCRIPTEN__)
+  #if defined(USE_GLIB)
   if ( !g_thread_supported()) {
     g_thread_init( NULL);
   }
@@ -648,6 +661,10 @@ int main(int argc, char ** argv) {
   }
 
   backup_setManualBackupType(my_config.savetype);
+
+  #if 1
+  printf("%s:%d:%s my_config.nds_file: %s\n", __FILE__, __LINE__, __func__, my_config.nds_file.c_str());
+  #endif
 
   error = NDS_LoadROM( my_config.nds_file.c_str() );
   if (error < 0) {
@@ -733,7 +750,7 @@ int main(int argc, char ** argv) {
   /* Initialize joysticks */
   if(!init_joy()) return 1;
 
-  #if !defined(__EMSCRIPTEN__)
+  #if defined(USE_GLIB)
   /* Load keyboard and joystick configuration */
   keyfile = desmume_config_read_file(cli_kb_cfg);
   desmume_config_dispose(keyfile);

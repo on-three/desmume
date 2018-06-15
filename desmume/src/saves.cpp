@@ -17,13 +17,7 @@
 	You should have received a copy of the GNU General Public License
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
-#if defined(__EMSCRIPTEN__)
-#define HAVE_LIBZ
-#endif
-
-#ifdef HAVE_LIBZ
 #include <zlib.h>
-#endif
 #include <stack>
 #include <set>
 #include <stdio.h>

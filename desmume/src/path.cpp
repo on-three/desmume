@@ -187,13 +187,17 @@ void FCEUD_MakePathDirs(const char *fname)
 
 void PathInfo::init(const char *filename) 
 {
+	#if 1
+	printf("%s:%d:%s filename: %s\n", __FILE__, __LINE__, __func__, filename);
+	#endif
+
 	path = std::string(filename);
 
 	//extract the internal part of the logical rom name
 	std::vector<std::string> parts = tokenize_str(filename,"|");
 	SetRomName(parts[parts.size()-1].c_str());
 	LoadModulePath();
-#if !defined(WIN32) && !defined(DESMUME_COCOA)
+#if !defined(WIN32) && !defined(DESMUME_COCOA) && !defined(__EMSCRIPTEN__)
 	ReadPathSettings();
 #endif
 		
