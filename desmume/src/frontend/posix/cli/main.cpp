@@ -445,6 +445,59 @@ resizeWindow_stub (u16 width, u16 height, void *screen_texture) {
 }
 #endif
 
+#if defined(__EMSCRIPTEN__)
+// as of emscripten 1.38.6 emscripten only has a partial impl of SDL_CreateRGBSurfaceFrom
+//SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
+SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
+                          int width, int height, int depth, int pitch,
+                          Uint32 Rmask, Uint32 Gmask, Uint32 Bmask,
+                         Uint32 Amask)
+{
+  SDL_Surface *surface;
+  surface = SDL_CreateRGBSurface(0, 0, 0, depth, Rmask, Gmask, Bmask, Amask);
+  if (surface != NULL) {
+    surface->flags |= SDL_PREALLOC;
+    surface->pixels = pixels;
+    surface->w = width;
+    surface->h = height;
+    surface->pitch = pitch;
+    SDL_SetClipRect(surface, NULL);
+  }
+  return surface;
+}
+  //var surfaceData = SDL.surfaces[surface];
+  //var surfaceImageData = surfaceData.ctx.getImageData(0, 0, width, height);
+  //var surfacePixelData = surfaceImageData.data;
+
+  // Fill pixel data to created surface.
+  // Supports SDL_PIXELFORMAT_RGBA8888 and SDL_PIXELFORMAT_RGB888
+/*   var channels = amask ? 4 : 3; // RGBA8888 or RGB888
+  for (var pixelOffset = 0; pixelOffset < width*height; pixelOffset++) {
+    surfacePixelData[pixelOffset*4+0] = HEAPU8[pixels + (pixelOffset*channels+0)]; // R
+    surfacePixelData[pixelOffset*4+1] = HEAPU8[pixels + (pixelOffset*channels+1)]; // G
+    surfacePixelData[pixelOffset*4+2] = HEAPU8[pixels + (pixelOffset*channels+2)]; // B
+    surfacePixelData[pixelOffset*4+3] = amask ? HEAPU8[pixels + (pixelOffset*channels+3)] : 0xff; // A
+  }; */
+
+  //surfaceData.ctx.putImageData(surfaceImageData, 0, 0);
+
+  // strictly speaking locking surface not necessary for emscripten
+  // as it's largely single threaded, but included for native testing.
+  //SDL_LockSurface(surface);
+
+  /* This assumes that color value zero is black. Use
+      SDL_MapRGBA() for more robust surface color mapping! */
+  /* height times pitch is the size of the surface's whole buffer. */
+  //Uint32 color = SDL_MapRGBA(surface->format, 255, 0, 0, 255);
+  //SDL_memset(surface->pixels, color, surface->h * surface->pitch);
+  //memset(surface->format, color, surface->h * surface->pitch);
+  //SDL_UnlockSurface(surface);
+
+  //return surface;
+//}
+#endif
+
+
 static void
 Draw( void) {
   const NDSDisplayInfo &displayInfo = GPU->GetDisplayInfo();
@@ -452,7 +505,11 @@ Draw( void) {
   ColorspaceApplyIntensityToBuffer16<false, false>((u16 *)displayInfo.masterNativeBuffer, pixCount, displayInfo.backlightIntensity[NDSDisplayID_Main]);
   ColorspaceApplyIntensityToBuffer16<false, false>((u16 *)displayInfo.masterNativeBuffer + pixCount, pixCount, displayInfo.backlightIntensity[NDSDisplayID_Touch]);
 
+  #if 1 //!defined(__EMSCRIPTEN__)
   SDL_Surface *rawImage = SDL_CreateRGBSurfaceFrom(displayInfo.masterNativeBuffer, GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2, 16, GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16), 0x001F, 0x03E0, 0x7C00, 0);
+  #else
+  SDL_Surface *rawImage = _SDL_CreateRGBSurfaceFrom(displayInfo.masterNativeBuffer, GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2, 16, GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16), 0x001F, 0x03E0, 0x7C00, 0);
+  #endif
   if(rawImage == NULL) return;
 
   SDL_BlitSurface(rawImage, 0, surface, 0);
