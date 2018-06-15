@@ -15,15 +15,19 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <glib.h>
-#include <glib/gstdio.h>
 
 #include "ctrlssdl.h"
 #include "desmume_config.h"
 
+#if defined(USE_GLIB)
+
+#include <glib.h>
+#include <glib/gstdio.h>
+
 static const gchar *desmume_old_config_file = ".desmume.ini";
 static const gchar *desmume_config_dir = "desmume";
 static const gchar *desmume_config_file = "config";
+
 
 GKeyFile *desmume_config_read_file(const u16 *kb_cfg)
 {
@@ -145,3 +149,7 @@ gboolean desmume_config_read_joykeys(GKeyFile *keyfile)
 
     return TRUE;
 }
+
+#else
+ // TODO: GLib free versions
+#endif
