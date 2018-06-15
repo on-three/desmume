@@ -31,6 +31,10 @@
 #include <glib.h>
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
+
 #ifndef VERSION
 #define VERSION "Unknown version"
 #endif
@@ -473,6 +477,8 @@ static void desmume_cycle(struct ctrls_event_config * cfg)
     #if !defined(__EMSCRIPTEN__)
     while ( !cfg->sdl_quit &&
         (SDL_PollEvent(&event) || (!cfg->focused && SDL_WaitEvent(&event))))
+    #else
+    if( !cfg->sdl_quit && SDL_PollEvent(&event))
     #endif
     {
         process_ctrls_event( event, cfg);
@@ -491,38 +497,125 @@ static void desmume_cycle(struct ctrls_event_config * cfg)
     SPU_Emulate_user();
 }
 
+/*
+  Emscritpen requires a non-blocking main loop, so it's traditional
+  to break out the work we do each frame, as well as any cleanup into separate methods.
+  emscripten_set_main_loop(update_loop, 60, 1);
+
+*/
+
+int limiter_frame_counter = 0;
+int limiter_tick0 = 0;
+int error;
+
+#if defined(USE_GLIB)
+GKeyFile *keyfile;
+#endif
+
+int now;
+
+#ifdef DISPLAY_FPS
+u32 fps_timing = 0;
+u32 fps_frame_counter = 0;
+u32 fps_previous_time = 0;
+#endif
+
+#ifdef INCLUDE_OPENGL_2D
+GLuint screen_texture[2];
+#endif
+class configured_features my_config;
+struct ctrls_event_config ctrls_cfg;
+
+#if defined(__EMSCRIPTEN__)
+void update_loop()
+{
+  #if 0
+  static unsigned int _frameNum = 0;
+  _frameNum++;
+  printf("%s:%d:%s frame: %u\n", __FILE__, __LINE__, __func__, _frameNum);
+  #endif
+
+  desmume_cycle(&ctrls_cfg);
+
+#ifdef HAVE_LIBAGG
+  osd->update();
+  DrawHUD();
+#endif
+
+#ifdef INCLUDE_OPENGL_2D
+  if ( my_config.opengl_2d) {
+    opengl_Draw(screen_texture);
+    ctrls_cfg.resize_cb = &resizeWindow;
+  }
+  else
+#endif
+    Draw();
+
+#ifdef HAVE_LIBAGG
+  osd->clear();
+#endif
+
+  #if 0
+  for ( int i = 0; i < my_config.frameskip; i++ )
+  {
+      NDS_SkipNextFrame();
+      desmume_cycle(&ctrls_cfg);
+  }
+  #endif
+
+#ifdef DISPLAY_FPS
+  now = SDL_GetTicks();
+#endif
+
+
+  #if 0
+  if ( !my_config.disable_limiter && !ctrls_cfg.boost) {
+#ifndef DISPLAY_FPS
+    now = SDL_GetTicks();
+#endif
+    int delay =  (limiter_tick0 + limiter_frame_counter*1000/FPS_LIMITER_FPS) - now;
+    if (delay < -500 || delay > 100) { // reset if we fall too far behind don't want to run super fast until we catch up
+      limiter_tick0 = now;
+      limiter_frame_counter = 0;
+    } else if (delay > 0) {
+      SDL_Delay(delay);
+    }
+  }
+  #endif
+
+  // always count frames, we'll mess up if the limiter gets turned on later otherwise
+  limiter_frame_counter += 1 + my_config.frameskip;
+
+#ifdef DISPLAY_FPS
+  fps_frame_counter += 1;
+  fps_timing += now - fps_previous_time;
+  fps_previous_time = now;
+
+  if ( fps_frame_counter == NUM_FRAMES_TO_TIME) {
+    char win_title[20];
+    float fps = NUM_FRAMES_TO_TIME * 1000.f / fps_timing;
+
+    fps_frame_counter = 0;
+    fps_timing = 0;
+
+    snprintf( win_title, sizeof(win_title), "Desmume %f", fps);
+
+    SDL_WM_SetCaption( win_title, NULL);
+  }
+#endif
+}
+#endif
+
 int main(int argc, char ** argv) {
   
-  #if 1
+  #if defined(__EMSCRIPTEN__)
   printf("%s:%d:%s\n", __FILE__, __LINE__, __func__);
   for(int i = 0; i < argc; ++i)
   {
     printf("%s:%d:%s argv[%d] = %s\n", __FILE__, __LINE__, __func__, i, argv[i]);
   }
   #endif
-  
-  class configured_features my_config;
-  struct ctrls_event_config ctrls_cfg;
 
-  int limiter_frame_counter = 0;
-  int limiter_tick0 = 0;
-  int error;
-
-  #if defined(USE_GLIB)
-  GKeyFile *keyfile;
-  #endif
-
-  int now;
-
-#ifdef DISPLAY_FPS
-  u32 fps_timing = 0;
-  u32 fps_frame_counter = 0;
-  u32 fps_previous_time = 0;
-#endif
-
-#ifdef INCLUDE_OPENGL_2D
-  GLuint screen_texture[2];
-#endif
   /* this holds some info about our display */
   const SDL_VideoInfo *videoInfo;
 
@@ -789,7 +882,9 @@ int main(int argc, char ** argv) {
 #endif
   ctrls_cfg.resize_cb = &resizeWindow_stub;
 
-  while(!ctrls_cfg.sdl_quit) {
+  #if !defined(__EMSCRIPTEN__)
+  while(!ctrls_cfg.sdl_quit)
+  {
     desmume_cycle(&ctrls_cfg);
 
 #ifdef HAVE_LIBAGG
@@ -851,7 +946,14 @@ int main(int argc, char ** argv) {
     }
 #endif
   }
+  #else // __EMSCRIPTEN__
 
+  emscripten_set_main_loop(update_loop, 0, 1);
+  
+  #endif
+
+  // TODO: move cleanup to a simple method
+  #if !defined(__EMSCRIPTEN__)
   /* Unload joystick */
   uninit_joy();
 
@@ -867,7 +969,7 @@ int main(int argc, char ** argv) {
   
   SDL_Quit();
   NDS_DeInit();
-
+  #endif // __EMSCRIPTEN__
 
   return 0;
 }
