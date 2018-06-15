@@ -1,0 +1,3 @@
+#!/bin/bash
+
+emrun --browser firefox desmume-cli.html roms/rom.nds
