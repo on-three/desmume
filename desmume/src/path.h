@@ -27,7 +27,7 @@
 
 		#include "frontend/windows/winutil.h"
 		#include "frontend/windows/resource.h"
-#elif !defined(DESMUME_COCOA)
+#elif !defined(DESMUME_COCOA) && !defined(__EMSCRIPTEN__)
 	#include <glib.h>
 #endif /* HOST_WINDOWS */
 
@@ -135,7 +135,7 @@ public:
 		{
 			strcpy(pathToModule,_hack_alternateModulePath);
 		}
-#elif defined(DESMUME_COCOA)
+#elif defined(DESMUME_COCOA) || defined(__EMSCRIPTEN__)
 		std::string pathStr = Path::GetFileDirectoryPath(path);
 
 		strncpy(pathToModule, pathStr.c_str(), MAX_PATH);
