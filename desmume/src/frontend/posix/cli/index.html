@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>desmume nintentdo ds emulator</title>
 <body>
+<img id="loading" src="loading.gif" alt="loading">
 <canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <script type='text/javascript'>
 
@@ -32,11 +33,15 @@
     setStatus: function(text) {
       console.log(text);  
     },
+    onRuntimeInitialized : function(args) {
+      var loading = document.getElementById('loading');
+      loading.style.display = "none";
+    },
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
       this.totalDependencies = Math.max(this.totalDependencies, left);
       Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-    }
+    },
   };
   Module.setStatus('Downloading...');
   window.onerror = function(event) {
@@ -47,8 +52,10 @@
   };
 
   // start our wasm running by
+  // 0) Set a "loading" image
   // 1) prefetching our .wasm binary and attaching it to our Module
   // 2) When that's complete, fetch and run our wasm.js
+  // 3) Emscripten will invoke the Module.onRuntimeInitialized() method when game starts to play (used to hide loading screen etc)
 
   var xhr = new XMLHttpRequest();
   xhr.open('GET', 'desmume-cli.wasm', true)
