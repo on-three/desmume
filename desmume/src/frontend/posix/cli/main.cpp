@@ -475,15 +475,43 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
     //b: 0111 1100 0000 0000 --> 5 bits
     #endif
 
-    //int channels = Amask ? 4 : 3;
+    #if 0
+    printf("Created surface: width: %d height: %d pitch %d bits per pixel %u bytes per pixel %u\n", surface->w, surface->h, surface->pitch, surface->format->BitsPerPixel, surface->format->BytesPerPixel);
+    //Created surface: width: 256 height: 384 pitch 1024 bits per pixel 32 bytes per pixel 4
+    printf("Created surface aMask: %x gMask: %x bMask: %x aMask %x\n", surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
+    // Created surface aMask: 1f gMask: 3e0 bMask: 7c00 aMask ff000000
+    #endif
+
+    int channels = Amask ? 4 : 3;
     SDL_LockSurface( surface );
-    uint16* pSrc = static_cast<uint16*>(pixels);
-    uint16* pDest = static_cast<uint16*>(surface->pixels);
-    for(int row = 0 ; row < height; ++row)
-    {      
-      for(int col = 0; col < width ; ++col)
+    //Uint8* pSrc = static_cast<Uint8*>(pixels);
+    //Uint8* pDest = static_cast<Uint8*>(surface->pixels);
+    //for(int pixelOffset = 0; pixelOffset < width * height; ++pixelOffset)
+    unsigned int srcBytesPerPixel = depth/8;
+    unsigned int destBytesPerPixel = surface->format->BytesPerPixel;
+    for(int y = 0; y < height; ++y)
+    {
+      for(int x = 0; x < width; ++x)
       {
-        pDest[row*pitch + col] = pSrc[row*pitch + col];
+        //Uint32 *pSrc = ((Uint32*)pixels) + (y * pitch + x);
+        Uint8 *pSrc = ((Uint8 *)pixels) + y * pitch + x * 2;
+        Uint8 *pDest = ((Uint8 *)surface->pixels) + y * surface->pitch + x * 4;
+
+        Uint8 r = pSrc[0];
+        Uint8 g = pSrc[1];
+        Uint8 b = pSrc[2];
+
+        pDest[0] = r;
+        pDest[1] = g;
+        pDest[2] = b;
+        pDest[3] = 0xff;
+        
+        //*pixel = 0xf0;
+        //*pDest = *pSrc;
+        //pDest[pixelOffset*4+0] = pSrc[pixelOffset*channels +0];
+        //pDest[pixelOffset*4+1] = pSrc[pixelOffset*channels +1];
+        //pDest[pixelOffset*4+2] = pSrc[pixelOffset*channels +2];
+        //pDest[pixelOffset*4+3] = Amask ? pSrc[pixelOffset*channels+3] : 0xff;
       }
     }
     //SDL_SetClipRect(surface, NULL);
