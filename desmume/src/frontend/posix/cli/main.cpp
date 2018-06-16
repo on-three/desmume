@@ -455,8 +455,11 @@ void PutPixel16_nolock(SDL_Surface * surface, int x, int y, Uint32 color)
 }
 
 
-// as of emscripten 1.38.6 emscripten only has a partial impl of SDL_CreateRGBSurfaceFrom
-//SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
+/*
+ as of emscripten 1.38.6 emscripten only has a partial impl of SDL_CreateRGBSurfaceFrom
+ so this naieve implementation is needed.
+ TODO: move to GL rendering as this is processing intensive.
+ */
 SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
                           int width, int height, int depth, int pitch,
                           Uint32 Rmask, Uint32 Gmask, Uint32 Bmask,
@@ -467,7 +470,7 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
                                    Rmask, Gmask, Bmask, Amask);
   if (surface != NULL) {
 
-    #if 0
+    #if 0 // DEBUG
     printf("%s:%d:%s width: %d height: %d depth: %d pitch %d rmask: %x gmask %x bmask %x amask: %x\n", __FILE__, __LINE__, __func__, width, height, depth, pitch, Rmask, Gmask, Bmask, Amask);
     //main.cpp:457:_SDL_CreateRGBSurfaceFrom width: 256 height: 384 depth: 16 pitch 512 rmask: 1f gmask 3e0 bmask 7c00 amask: 0
     //r: 0001 1111 --> 5 bits
@@ -475,53 +478,35 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
     //b: 0111 1100 0000 0000 --> 5 bits
     #endif
 
-    #if 0
+    #if 0 // DEBUG
     printf("Created surface: width: %d height: %d pitch %d bits per pixel %u bytes per pixel %u\n", surface->w, surface->h, surface->pitch, surface->format->BitsPerPixel, surface->format->BytesPerPixel);
     //Created surface: width: 256 height: 384 pitch 1024 bits per pixel 32 bytes per pixel 4
     printf("Created surface aMask: %x gMask: %x bMask: %x aMask %x\n", surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
     // Created surface aMask: 1f gMask: 3e0 bMask: 7c00 aMask ff000000
     #endif
 
-    int channels = Amask ? 4 : 3;
     SDL_LockSurface( surface );
-    //Uint8* pSrc = static_cast<Uint8*>(pixels);
-    //Uint8* pDest = static_cast<Uint8*>(surface->pixels);
-    //for(int pixelOffset = 0; pixelOffset < width * height; ++pixelOffset)
-    unsigned int srcBytesPerPixel = depth/8;
-    unsigned int destBytesPerPixel = surface->format->BytesPerPixel;
+
+    const unsigned int srcPixelPitch = pitch/(depth/8);
+    const unsigned int destBytesPerPixel = surface->format->BytesPerPixel;
     for(int y = 0; y < height; ++y)
     {
       for(int x = 0; x < width; ++x)
       {
-        //Uint32 *pSrc = ((Uint32*)pixels) + (y * pitch + x);
-        Uint8 *pSrc = ((Uint8 *)pixels) + y * pitch + x * 2;
-        Uint16* _pSrc = (Uint16*)pSrc;
-        Uint8 *pDest = ((Uint8 *)surface->pixels) + y * surface->pitch + x * 4;
+        Uint16* pSrc = (Uint16*)pixels + y * srcPixelPitch + x;
+        Uint8* pDest = ((Uint8*)surface->pixels) + y * surface->pitch + x * destBytesPerPixel;
 
-        #if 0
-        Uint8 r = pSrc[0];
-        Uint8 g = pSrc[1];
-        Uint8 b = pSrc[2];
-        #else
-        Uint8 r = (_pSrc[0] & Rmask);
+        Uint8 r = (pSrc[0] & Rmask);
         double _r = r * 255.0/32.0;
-        Uint8 g = ((_pSrc[0] & Gmask)>> 5);
+        Uint8 g = ((pSrc[0] & Gmask)>> 5);
         double _g = g * 255.0/32.0;
-        Uint8 b = ((_pSrc[0] & Bmask)>> 10);
+        Uint8 b = ((pSrc[0] & Bmask)>> 10);
         double _b = b * 255.0/32.0;
-        #endif
 
         pDest[0] = (Uint8)_r;
         pDest[1] = (Uint8)_g;
         pDest[2] = (Uint8)_b;
-        pDest[3] = 0xff;
-        
-        //*pixel = 0xf0;
-        //*pDest = *pSrc;
-        //pDest[pixelOffset*4+0] = pSrc[pixelOffset*channels +0];
-        //pDest[pixelOffset*4+1] = pSrc[pixelOffset*channels +1];
-        //pDest[pixelOffset*4+2] = pSrc[pixelOffset*channels +2];
-        //pDest[pixelOffset*4+3] = Amask ? pSrc[pixelOffset*channels+3] : 0xff;
+        pDest[3] = 0xff; // alpha
       }
     }
     //SDL_SetClipRect(surface, NULL);
@@ -529,23 +514,7 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
   }
   return surface;
 }
-  //var surfaceData = SDL.surfaces[surface];
-  //var surfaceImageData = surfaceData.ctx.getImageData(0, 0, width, height);
-  //var surfacePixelData = surfaceImageData.data;
-
-  // Fill pixel data to created surface.
-  // Supports SDL_PIXELFORMAT_RGBA8888 and SDL_PIXELFORMAT_RGB888
-/*   var channels = amask ? 4 : 3; // RGBA8888 or RGB888
-  for (var pixelOffset = 0; pixelOffset < width*height; pixelOffset++) {
-    surfacePixelData[pixelOffset*4+0] = HEAPU8[pixels + (pixelOffset*channels+0)]; // R
-    surfacePixelData[pixelOffset*4+1] = HEAPU8[pixels + (pixelOffset*channels+1)]; // G
-    surfacePixelData[pixelOffset*4+2] = HEAPU8[pixels + (pixelOffset*channels+2)]; // B
-    surfacePixelData[pixelOffset*4+3] = amask ? HEAPU8[pixels + (pixelOffset*channels+3)] : 0xff; // A
-  }; */
-
-  //surfaceData.ctx.putImageData(surfaceImageData, 0, 0);
-
-#endif
+#endif // __EMSCRIPTEN__
 
 
 static void
