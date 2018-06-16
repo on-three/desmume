@@ -38,7 +38,7 @@ AC_DEFINE_UNQUOTED([SVN_REV], [$REVISION], [subversion revision number])
 AC_DEFINE_UNQUOTED([SVN_REV_STR], ["$REVISION"], [subversion revision number string])
 
 dnl - Check for zlib
-AC_CHECK_LIB(z, gzopen, [], [AC_MSG_ERROR([zlib was not found, we can't go further. Please install it or specify the location where it's installed.])])
+#AC_CHECK_LIB(z, gzopen, [], [AC_MSG_ERROR([zlib was not found, we can't go further. Please install it or specify the location where it's installed.])])
 
 dnl - Check for zziplib
 AC_CHECK_LIB(zzip, zzip_open, [
@@ -250,8 +250,8 @@ fi
 dnl - jit support
 case $host_cpu in
   x86|x86_64|i386|i486|i586|i686)
-    HAVE_JIT=yes
-    AC_DEFINE(HAVE_JIT)
+    HAVE_JIT=no
+    #AC_DEFINE(HAVE_JIT)
     ;;
 esac
 AM_CONDITIONAL([HAVE_JIT], [test "x$HAVE_JIT" = "xyes"])
