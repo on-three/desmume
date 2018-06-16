@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-us">
+ <head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>desmume nintentdo ds emulator</title>
+<body>
+<canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<script type='text/javascript'>
+
+  var Module = {
+    preRun: [],
+    postRun: [],
+    print: (function() {
+      return function(text) {
+        console.log(text);
+      };
+    })(),
+    printErr: function(text) {
+     console.error(text);
+    },
+    canvas: (function() {
+      var canvas = document.getElementById('canvas');
+
+      // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+      // application robust, you may want to override this behavior before shipping!
+      // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+      canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+      return canvas;
+    })(),
+    setStatus: function(text) {
+      console.log(text);  
+    },
+    totalDependencies: 0,
+    monitorRunDependencies: function(left) {
+      this.totalDependencies = Math.max(this.totalDependencies, left);
+      Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+    }
+  };
+  Module.setStatus('Downloading...');
+  window.onerror = function(event) {
+    Module.setStatus('Exception thrown, see JavaScript console');
+    Module.setStatus = function(text) {
+      if (text) Module.printErr('[post-exception status] ' + text);
+    };
+  };
+
+  // start our wasm running by
+  // 1) prefetching our .wasm binary and attaching it to our Module
+  // 2) When that's complete, fetch and run our wasm.js
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'desmume-cli.wasm', true)
+  xhr.responseType = 'arraybuffer';
+  xhr.onload = function() {
+    Module.wasmBinary = xhr.response;
+    var script = document.createElement('script');
+    script.src = "desmume-cli.js";
+    document.body.appendChild(script);
+  };
+  xhr.send(null);
+</script>
+</body>
+</html>
