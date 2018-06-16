@@ -495,15 +495,25 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
       {
         //Uint32 *pSrc = ((Uint32*)pixels) + (y * pitch + x);
         Uint8 *pSrc = ((Uint8 *)pixels) + y * pitch + x * 2;
+        Uint16* _pSrc = (Uint16*)pSrc;
         Uint8 *pDest = ((Uint8 *)surface->pixels) + y * surface->pitch + x * 4;
 
+        #if 0
         Uint8 r = pSrc[0];
         Uint8 g = pSrc[1];
         Uint8 b = pSrc[2];
+        #else
+        Uint8 r = (_pSrc[0] & Rmask);
+        double _r = r * 255.0/32.0;
+        Uint8 g = ((_pSrc[0] & Gmask)>> 5);
+        double _g = g * 255.0/32.0;
+        Uint8 b = ((_pSrc[0] & Bmask)>> 10);
+        double _b = b * 255.0/32.0;
+        #endif
 
-        pDest[0] = r;
-        pDest[1] = g;
-        pDest[2] = b;
+        pDest[0] = (Uint8)_r;
+        pDest[1] = (Uint8)_g;
+        pDest[2] = (Uint8)_b;
         pDest[3] = 0xff;
         
         //*pixel = 0xf0;
