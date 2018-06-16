@@ -446,6 +446,15 @@ resizeWindow_stub (u16 width, u16 height, void *screen_texture) {
 #endif
 
 #if defined(__EMSCRIPTEN__)
+
+void PutPixel16_nolock(SDL_Surface * surface, int x, int y, Uint32 color)
+{
+    Uint8 * pixel = (Uint8*)surface->pixels;
+    pixel += (y * surface->pitch) + (x * sizeof(Uint16));
+    *((Uint16*)pixel) = color & 0xFFFF;
+}
+
+
 // as of emscripten 1.38.6 emscripten only has a partial impl of SDL_CreateRGBSurfaceFrom
 //SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
 SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
@@ -454,14 +463,31 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
                          Uint32 Amask)
 {
   SDL_Surface *surface;
-  surface = SDL_CreateRGBSurface(0, 0, 0, depth, Rmask, Gmask, Bmask, Amask);
+  surface = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, depth,
+                                   Rmask, Gmask, Bmask, Amask);
   if (surface != NULL) {
-    surface->flags |= SDL_PREALLOC;
-    surface->pixels = pixels;
-    surface->w = width;
-    surface->h = height;
-    surface->pitch = pitch;
-    SDL_SetClipRect(surface, NULL);
+
+    #if 0
+    printf("%s:%d:%s width: %d height: %d depth: %d pitch %d rmask: %x gmask %x bmask %x amask: %x\n", __FILE__, __LINE__, __func__, width, height, depth, pitch, Rmask, Gmask, Bmask, Amask);
+    //main.cpp:457:_SDL_CreateRGBSurfaceFrom width: 256 height: 384 depth: 16 pitch 512 rmask: 1f gmask 3e0 bmask 7c00 amask: 0
+    //r: 0001 1111 --> 5 bits
+    //g: 0011 1110 0000 --> 5 bits
+    //b: 0111 1100 0000 0000 --> 5 bits
+    #endif
+
+    //int channels = Amask ? 4 : 3;
+    SDL_LockSurface( surface );
+    uint16* pSrc = static_cast<uint16*>(pixels);
+    uint16* pDest = static_cast<uint16*>(surface->pixels);
+    for(int row = 0 ; row < height; ++row)
+    {      
+      for(int col = 0; col < width ; ++col)
+      {
+        pDest[row*pitch + col] = pSrc[row*pitch + col];
+      }
+    }
+    //SDL_SetClipRect(surface, NULL);
+    SDL_UnlockSurface(surface);
   }
   return surface;
 }
@@ -481,20 +507,6 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
 
   //surfaceData.ctx.putImageData(surfaceImageData, 0, 0);
 
-  // strictly speaking locking surface not necessary for emscripten
-  // as it's largely single threaded, but included for native testing.
-  //SDL_LockSurface(surface);
-
-  /* This assumes that color value zero is black. Use
-      SDL_MapRGBA() for more robust surface color mapping! */
-  /* height times pitch is the size of the surface's whole buffer. */
-  //Uint32 color = SDL_MapRGBA(surface->format, 255, 0, 0, 255);
-  //SDL_memset(surface->pixels, color, surface->h * surface->pitch);
-  //memset(surface->format, color, surface->h * surface->pitch);
-  //SDL_UnlockSurface(surface);
-
-  //return surface;
-//}
 #endif
 
 
@@ -505,7 +517,7 @@ Draw( void) {
   ColorspaceApplyIntensityToBuffer16<false, false>((u16 *)displayInfo.masterNativeBuffer, pixCount, displayInfo.backlightIntensity[NDSDisplayID_Main]);
   ColorspaceApplyIntensityToBuffer16<false, false>((u16 *)displayInfo.masterNativeBuffer + pixCount, pixCount, displayInfo.backlightIntensity[NDSDisplayID_Touch]);
 
-  #if 1 //!defined(__EMSCRIPTEN__)
+  #if !defined(__EMSCRIPTEN__)
   SDL_Surface *rawImage = SDL_CreateRGBSurfaceFrom(displayInfo.masterNativeBuffer, GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2, 16, GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16), 0x001F, 0x03E0, 0x7C00, 0);
   #else
   SDL_Surface *rawImage = _SDL_CreateRGBSurfaceFrom(displayInfo.masterNativeBuffer, GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2, 16, GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof(u16), 0x001F, 0x03E0, 0x7C00, 0);
