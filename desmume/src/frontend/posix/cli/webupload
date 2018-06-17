@@ -1,0 +1,7 @@
+#!/bin/bash
+
+rsync -avz index.html on-three@${DEV_VPS}:/home/on-three/public_html/desmume/
+rsync -avz loading.gif on-three@${DEV_VPS}:/home/on-three/public_html/desmume/
+rsync -avz desmume-cli.js on-three@${DEV_VPS}:/home/on-three/public_html/desmume/
+rsync -avz desmume-cli.wasm on-three@${DEV_VPS}:/home/on-three/public_html/desmume/
+rsync -avz roms on-three@${DEV_VPS}:/home/on-three/public_html/desmume/
