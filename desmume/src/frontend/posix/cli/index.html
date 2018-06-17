@@ -9,8 +9,27 @@
 <canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <script type='text/javascript'>
 
+  function getUrlVars() {
+    var vars = {};
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        vars[key.toUpperCase()] = value;
+    });
+    return vars;
+  }
+
   var Module = {
-    preRun: [],
+    preRun: [
+    function(){
+      if(this.rom) {
+        var rom = this.rom;
+        var path = rom.substring(0, rom.lastIndexOf("/") + 1);
+        var file = rom.substring(rom.lastIndexOf("/") + 1, rom.length);
+        console.log("Prefetching ROM iage: ",rom);
+        FS.createPath("/", path, true, true);
+        FS.createPreloadedFile(path, file, rom, true, false);
+      }
+    }
+    ],
     postRun: [],
     print: (function() {
       return function(text) {
@@ -34,8 +53,11 @@
       console.log(text);  
     },
     onRuntimeInitialized : function(args) {
+      // hide loading image if  there is one
       var loading = document.getElementById('loading');
-      loading.style.display = "none";
+      if(loading) {
+        loading.style.display = "none";
+      }
     },
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
@@ -49,6 +71,16 @@
     Module.setStatus = function(text) {
       if (text) Module.printErr('[post-exception status] ' + text);
     };
+  };
+
+  // Parse our URL parameters and add them as necessary to Module.args
+  // This is in lieu of using emscripten --emrun support
+  var args = getUrlVars();
+  if(args && args['ROM']) {
+    var rom = args['ROM'];
+    console.log("Loading rom: ", rom);
+    Module['rom'] = rom;
+    Module['arguments'] = [rom];
   };
 
   // start our wasm running by

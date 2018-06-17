@@ -33,10 +33,6 @@
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
-
-#if !defined(DEFAULT_ROM)
-#define DEFAULT_ROM "roms/rom.nds"
-#endif
 #endif
 
 #ifndef VERSION
@@ -177,6 +173,14 @@ init_config( class configured_features *config) {
   config->firmware_language = -1;
 }
 
+#if !defined(USE_GLIB)
+// Simple implementations if GLIB lacking
+void g_printerr(const char* str)
+{
+  fprintf(stderr, "%s\n", str);
+}
+#endif
+
 
 static int
 fill_config( class configured_features *config,
@@ -220,8 +224,6 @@ fill_config( class configured_features *config,
   if(!config->validate())
     goto error;
 
-  #if defined(USE_GLIB)
-
   if (config->savetype < 0 || config->savetype > 6) {
     g_printerr("Accepted savetypes are from 0 to 6.\n");
     return false;
@@ -258,19 +260,6 @@ fill_config( class configured_features *config,
     goto error;
   }
 #endif
-  #endif // USE_GLIB
-
-#if defined(__EMSCRIPTEN__)
-  if (config->nds_file == "")
-  {
-    #if defined(DEFAULT_ROM)
-    config->nds_file = DEFAULT_ROM;
-    #else
-    goto error;
-    #endif
-  }
-#endif
-
 
   return 1;
 
