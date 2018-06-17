@@ -33,6 +33,10 @@
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
+
+#if !defined(DEFAULT_ROM)
+#define DEFAULT_ROM "roms/rom.nds"
+#endif
 #endif
 
 #ifndef VERSION
@@ -177,7 +181,7 @@ init_config( class configured_features *config) {
 static int
 fill_config( class configured_features *config,
              int argc, char ** argv) {
-  #if  0 //defined(USE_GLIB)
+  #if defined(USE_GLIB)
   GOptionEntry options[] = {
     { "auto-pause", 0, 0, G_OPTION_ARG_NONE, &config->auto_pause, "Pause emulation if focus is lost", NULL},
     { "frameskip", 0, 0, G_OPTION_ARG_INT, &config->frameskip, "Set frameskip", "FRAMESKIP"},
@@ -255,6 +259,19 @@ fill_config( class configured_features *config,
   }
 #endif
   #endif // USE_GLIB
+
+#if defined(__EMSCRIPTEN__)
+  if (config->nds_file == "")
+  {
+    #if defined(DEFAULT_ROM)
+    config->nds_file = DEFAULT_ROM;
+    #else
+    goto error;
+    #endif
+  }
+#endif
+
+
   return 1;
 
 error:
