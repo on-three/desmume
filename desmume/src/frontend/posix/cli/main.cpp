@@ -154,6 +154,21 @@ public:
 #endif
 
   int firmware_language;
+
+public:
+  void printConfig() const
+  {
+    printf("Configured features:\n");
+    printf("auto_pause: %d\n", auto_pause);
+    printf("frameskip: %d\n", frameskip);
+    printf("engine_3d %d\n", engine_3d);
+    printf("savetype: %d\n", savetype);
+    #if defined(INCLUDE_OPENGL_2D)
+    printf("opengl_2d: %d\n", opengl_2d);
+    #endif
+    printf("firmware_language: %d\n", firmware_language);
+  }
+
 };
 
 static void
@@ -261,6 +276,8 @@ fill_config( class configured_features *config,
   }
 #endif
 
+  config->printConfig();
+
   return 1;
 
 error:
@@ -337,9 +354,13 @@ initGL( GLuint *screen_texture) {
   if ((errCode = glGetError()) != GL_NO_ERROR) {
     const GLubyte *errString;
 
+    // currently issues linking with gluErrorString on emscripten
+    #if !defined(__EMSCRIPTEN__)
     errString = gluErrorString(errCode);
     fprintf( stderr, "Failed to init GL: %s\n", errString);
-
+    #else
+    fprintf(stderr, "Failed to init GL via errCode: %d\n", errCode);
+    #endif
     return 0;
   }
 
@@ -387,8 +408,12 @@ resizeWindow( u16 width, u16 height, GLuint *screen_texture) {
   if ((errCode = glGetError()) != GL_NO_ERROR) {
     const GLubyte *errString;
 
+    #if !defined(__EMSCRIPTEN__)
     errString = gluErrorString(errCode);
     fprintf( stderr, "GL resize failed: %s\n", errString);
+    #else
+    fprintf( stderr, "GL resize failed: %d\n", errCode);
+    #endif
   }
 }
 

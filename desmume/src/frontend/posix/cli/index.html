@@ -9,10 +9,18 @@
 <canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <script type='text/javascript'>
 
-  function getUrlVars() {
+  function urlVarsToDictionary() {
     var vars = {};
     var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-        vars[key.toUpperCase()] = value;
+        vars[key] = value;
+    });
+    return vars;
+  }
+  function urlVarsToArray() {
+    var vars = [];
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        vars.push(key);
+        vars.push(value);
     });
     return vars;
   }
@@ -75,13 +83,24 @@
 
   // Parse our URL parameters and add them as necessary to Module.args
   // This is in lieu of using emscripten --emrun support
-  var args = getUrlVars();
+  var args = urlVarsToDictionary();
   if(args && args['ROM']) {
     var rom = args['ROM'];
     console.log("Loading rom: ", rom);
     Module['rom'] = rom;
-    Module['arguments'] = [rom];
-  };
+    Module['args'] = args;
+    // In order to satisfy the desmume arg parser
+    // we pass in rom without a key value.
+    delete args['ROM'];
+    _args = [rom];
+    for( key in args) {
+      _args.push(key);
+      _args.push(args[key]);
+    }
+    Module['arguments'] = _args;
+  } else {
+    // TODO: throw up "no rom specified" message and fail load.
+  }
 
   // start our wasm running by
   // 0) Set a "loading" image
