@@ -164,24 +164,48 @@ size_t EMUFILE_FILE::fwrite(const void *ptr, size_t bytes)
 	else
 	{
 		EM_ASM({
-			// We've just written to a memory file with (hopeully) a mounted IDBFS behind it
-			// We should kick off a timer to reflect in-memory fs back to IDBFS, but only
-			// if an existing timer isn't already running. In that case we reset the timer.
-			if(Module.idbfsTimer)
+			// We've just written to a memory file with (hopeully) a mounted IDBFS behind it.
+			// We should kick off a timer to reflect in-memory fs back to IDBFS, and
+			// record a dirty flag while the sync is outstanding.
+
+			Module.idbfsDirty = true;
+
+			if(!Module.idbfsSync)
 			{
-				window.clearTimeout(Module.idbfsTimer);
-			}
-				Module.idbfsTimer = window.setTimeout(
+				Module.idbfsSync = function() {
+
+					if(Module.idbfsSyncing) {
+						return;
+					}
+
+					Module.idbfsSyncing = true;
+					Module.idbfsDirty = false;
+
+					Module.idbfsTimer = window.setTimeout(
 					function(){
 						console.log("Syncing IDBFS from RAM filesystem.");
 						Module.idbfsTimer = null;
 						// reflect RAM filesystem back to IDBFS
-						FS.syncfs(false, function(){console.log("Synced IDBFS from RAM fs.");});
+						FS.syncfs(false, function(){
+							console.log("Synced IDBFS from RAM fs.");
+							Module.idbfsSyncing = false;
+
+							// if IDBFS got a dirty flag set while we were synching, resync
+							if(Module.idbfsDirty)
+							{
+								Module.idbfsSync();
+							}
+
+						});
 					}
 					, 500);
+				};
+			}
+			
+			Module.idbfsSync();
 		});
 	}
-	#endif
+	#endif // __EMSCRIPTEN__
 	
 	return ret;
 }
