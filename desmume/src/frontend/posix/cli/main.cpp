@@ -71,6 +71,7 @@
 #include "../commandline.h"
 #include "../slot2.h"
 #include "../utils/xstring.h"
+#include "../path.h"
 
 #ifdef GDB_STUB
 #include "../armcpu.h"
@@ -739,6 +740,14 @@ int main(int argc, char ** argv) {
   if ( !fill_config( &my_config, argc, argv)) {
     exit(1);
   }
+
+  #if defined(__EMSCRIPTEN__)
+  // Set some paths standard paths for web version
+  strncpy(path.pathToModule, "/", MAX_PATH);
+  strncpy(path.pathToSlot1D, "/Slot1D", MAX_PATH);
+  strncpy(path.pathToBattery, "/Battery", MAX_PATH);
+
+  #endif
 
   /* use any language set on the command line */
   if ( my_config.firmware_language != -1) {

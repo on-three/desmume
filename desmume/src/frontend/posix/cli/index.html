@@ -28,6 +28,7 @@
   var Module = {
     preRun: [
     function(){
+      // prefetch and load the ROM we'll play to a known path.
       if(this.rom) {
         var rom = this.rom;
         var path = rom.substring(0, rom.lastIndexOf("/") + 1);
@@ -36,6 +37,22 @@
         FS.createPath("/", path, true, true);
         FS.createPreloadedFile(path, file, rom, true, false);
       }
+    },
+    function() {
+      // Initialize and mount the IDBFS persistent save storage
+      var BACKUP_DIR = '/Battery';
+      this.addRunDependency('loadPersistentStorage');
+      var _this = this;
+      FS.mkdir(BACKUP_DIR);
+      FS.mount(IDBFS, {}, BACKUP_DIR);
+      FS.syncfs(true /*load data to fs from persistent storage*/, function (err) {
+        _this.removeRunDependency('loadPersistentStorage');
+        if(err) {
+          console.error("Could not read persistent data into filesystem: ", error);
+        }else{
+          console.log("Persisten storage mounted at dir /SAVES");
+        }
+      });
     }
     ],
     postRun: [],

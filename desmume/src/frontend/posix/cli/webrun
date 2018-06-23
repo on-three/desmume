@@ -7,4 +7,4 @@ if [ "$#" -ge 1 ];
   then ROM=$1;
 fi
 
-emrun --browser firefox index.html ROM=roms/${ROM}.nds
+emrun --browser firefox index.html ROM=/roms/${ROM}.nds
