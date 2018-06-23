@@ -151,7 +151,7 @@ void EMUFILE_FILE::EnablePositionCache()
 
 size_t EMUFILE_FILE::fwrite(const void *ptr, size_t bytes)
 {
-	#if 1
+	#if 0
 	::fprintf(stderr, "%s:%d:%s writing %d bytes to file %s.\n", __FILE__, __LINE__, __func__, (int)bytes, fname.c_str());
 	#endif
 
