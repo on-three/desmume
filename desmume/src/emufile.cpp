@@ -26,6 +26,10 @@ THE SOFTWARE.
 
 #include <vector>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
+
 bool EMUFILE::readAllBytes(std::vector<u8>* dstbuf, const std::string& fname)
 {
 	EMUFILE_FILE file(fname.c_str(),"rb");
@@ -63,6 +67,10 @@ size_t EMUFILE_MEMORY::_fread(const void *ptr, size_t bytes){
 
 void EMUFILE_FILE::truncate(s32 length)
 {
+	#if 1
+	fprintf("%s:%d:%s length: %d\n", __FILE__, __LINE__, __func__, length);
+	#endif
+
 	::fflush(fp);
 	#ifdef HOST_WINDOWS 
 		_chsize(_fileno(fp),length);
@@ -143,11 +151,37 @@ void EMUFILE_FILE::EnablePositionCache()
 
 size_t EMUFILE_FILE::fwrite(const void *ptr, size_t bytes)
 {
+	#if 0
+	::fprintf(stderr, "%s:%d:%s writing %d bytes to file %s.\n", __FILE__, __LINE__, __func__, (int)bytes, fname.c_str());
+	#endif
+
 	DemandCondition(eCondition_Write);
 	size_t ret = ::fwrite((void*)ptr, 1, bytes, fp);
 	mFilePosition += ret;
 	if(ret < bytes)
 		failbit = true;
+	#if defined(__EMSCRIPTEN__)
+	else
+	{
+		EM_ASM({
+			// We've just written to a memory file with (hopeully) a mounted IDBFS behind it
+			// We should kick off a timer to reflect in-memory fs back to IDBFS, but only
+			// if an existing timer isn't already running. In that case we reset the timer.
+			if(Module.idbfsTimer)
+			{
+				window.clearTimeout(Module.idbfsTimer);
+			}
+				Module.idbfsTimer = window.setTimeout(
+					function(){
+						console.log("Syncing IDBFS from RAM filesystem.");
+						Module.idbfsTimer = null;
+						// reflect RAM filesystem back to IDBFS
+						FS.syncfs(false, function(){console.log("Synced IDBFS from RAM fs.");});
+					}
+					, 500);
+		});
+	}
+	#endif
 	
 	return ret;
 }

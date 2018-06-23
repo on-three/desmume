@@ -9,10 +9,18 @@
 <canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <script type='text/javascript'>
 
-  function getUrlVars() {
+  function urlVarsToDictionary() {
     var vars = {};
     var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-        vars[key.toUpperCase()] = value;
+        vars[key] = value;
+    });
+    return vars;
+  }
+  function urlVarsToArray() {
+    var vars = [];
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        vars.push(key);
+        vars.push(value);
     });
     return vars;
   }
@@ -20,14 +28,31 @@
   var Module = {
     preRun: [
     function(){
+      // prefetch and load the ROM we'll play to a known path.
       if(this.rom) {
         var rom = this.rom;
         var path = rom.substring(0, rom.lastIndexOf("/") + 1);
         var file = rom.substring(rom.lastIndexOf("/") + 1, rom.length);
         console.log("Prefetching ROM iage: ",rom);
         FS.createPath("/", path, true, true);
-        FS.createPreloadedFile(path, file, rom, true, false);
+        FS.createPreloadedFile(path, file, '.' + rom, true, false);
       }
+    },
+    function() {
+      // Initialize and mount the IDBFS persistent save storage
+      var BACKUP_DIR = '/Battery';
+      this.addRunDependency('loadPersistentStorage');
+      var _this = this;
+      FS.mkdir(BACKUP_DIR);
+      FS.mount(IDBFS, {}, BACKUP_DIR);
+      FS.syncfs(true /*load data to fs from persistent storage*/, function (err) {
+        _this.removeRunDependency('loadPersistentStorage');
+        if(err) {
+          console.error("Could not read persistent data into filesystem: ", error);
+        }else{
+          console.log("Persisten storage mounted at dir /SAVES");
+        }
+      });
     }
     ],
     postRun: [],
@@ -75,13 +100,24 @@
 
   // Parse our URL parameters and add them as necessary to Module.args
   // This is in lieu of using emscripten --emrun support
-  var args = getUrlVars();
+  var args = urlVarsToDictionary();
   if(args && args['ROM']) {
     var rom = args['ROM'];
     console.log("Loading rom: ", rom);
     Module['rom'] = rom;
-    Module['arguments'] = [rom];
-  };
+    Module['args'] = args;
+    // In order to satisfy the desmume arg parser
+    // we pass in rom without a key value.
+    delete args['ROM'];
+    _args = [rom];
+    for( key in args) {
+      _args.push(key);
+      _args.push(args[key]);
+    }
+    Module['arguments'] = _args;
+  } else {
+    // TODO: throw up "no rom specified" message and fail load.
+  }
 
   // start our wasm running by
   // 0) Set a "loading" image
