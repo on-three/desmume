@@ -35,7 +35,7 @@
         var file = rom.substring(rom.lastIndexOf("/") + 1, rom.length);
         console.log("Prefetching ROM iage: ",rom);
         FS.createPath("/", path, true, true);
-        FS.createPreloadedFile(path, file, rom, true, false);
+        FS.createPreloadedFile(path, file, '.' + rom, true, false);
       }
     },
     function() {
