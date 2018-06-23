@@ -101,6 +101,10 @@
   // Parse our URL parameters and add them as necessary to Module.args
   // This is in lieu of using emscripten --emrun support
   var args = urlVarsToDictionary();
+  if(args && args['CACHEBUST']) {
+    Module.cacheBuest=true;
+    delete args['CACHEBUST'];
+  }
   if(args && args['ROM']) {
     var rom = args['ROM'];
     console.log("Loading rom: ", rom);
@@ -126,12 +130,19 @@
   // 3) Emscripten will invoke the Module.onRuntimeInitialized() method when game starts to play (used to hide loading screen etc)
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'desmume-cli.wasm', true)
+  var fileUriBase = 'desmume-cli';
+  var wasmFileUri = fileUriBase + '.wasm';
+  var jsFileUri = fileUriBase + '.js'
+  if(Module.cacheBuest) {
+    wasmFileUri += "?CACHEBUST=" + new Date().getTime();
+    jsFileUri += "?CACHEBUST=" + new Date().getTime();
+  }
+  xhr.open('GET', wasmFileUri, true)
   xhr.responseType = 'arraybuffer';
   xhr.onload = function() {
     Module.wasmBinary = xhr.response;
     var script = document.createElement('script');
-    script.src = "desmume-cli.js";
+    script.src = jsFileUri;
     document.body.appendChild(script);
   };
   xhr.send(null);
