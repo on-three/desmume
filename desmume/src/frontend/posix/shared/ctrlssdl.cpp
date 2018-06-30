@@ -123,7 +123,11 @@ BOOL init_joy( void) {
       for (i = 0; i < nbr_joy; i++)
         {
           SDL_Joystick * joy = SDL_JoystickOpen(i);
+          #if !SDL_VERSION_ATLEAST(2,0,0)
           printf("Joystick %d %s\n", i, SDL_JoystickName(i));
+          #else
+          printf("Joystick %d %s\n", i, SDL_JoystickName(joy));
+          #endif
           printf("Axes: %d\n", SDL_JoystickNumAxes(joy));
           printf("Buttons: %d\n", SDL_JoystickNumButtons(joy));
           printf("Trackballs: %d\n", SDL_JoystickNumBalls(joy));
@@ -476,10 +480,19 @@ process_ctrls_event( SDL_Event& event,
   if ( !do_process_joystick_events( &cfg->keypad, &event)) {
     switch (event.type)
     {
+      #if !SDL_VERSION_ATLEAST(2,0,0)
       case SDL_VIDEORESIZE:
+      #else
+      case SDL_WINDOWEVENT_RESIZED:
+      #endif
+        #if !SDL_VERSION_ATLEAST(2,0,0)
         cfg->resize_cb( event.resize.w, event.resize.h, cfg->screen_texture);
+        #else
+        printf("%s:%d:%s event SDL_WINDOWEVENT_RESIZED\n", __FILE__, __LINE__, __func__);
+        #endif
         break;
 
+      #if !SDL_VERSION_ATLEAST(2,0,0)
       case SDL_ACTIVEEVENT:
         if (cfg->auto_pause && (event.active.state & SDL_APPINPUTFOCUS )) {
           if (event.active.gain) {
@@ -492,6 +505,7 @@ process_ctrls_event( SDL_Event& event,
           }
         }
         break;
+      #endif
 
       case SDL_KEYDOWN:
         switch(event.key.keysym.sym){

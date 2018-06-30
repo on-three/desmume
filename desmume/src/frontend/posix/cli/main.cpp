@@ -42,7 +42,7 @@
 /*
  * FIXME: Not sure how to detect OpenGL in a platform portable way.
  */
-#ifdef HAVE_GL_GL_H
+#if defined(HAVE_GL_GL_H) && !SDL_VERSION_ATLEAST(2,0,0)
 #define INCLUDE_OPENGL_2D
 #endif
 
@@ -90,8 +90,13 @@ static float nds_screen_size_ratio = 1.0f;
 
 #define FPS_LIMITER_FPS 60
 
+#if !SDL_VERSION_ATLEAST(2,0,0)
 static SDL_Surface * surface;
-
+#else
+static SDL_Window* screen = 0;
+static SDL_Renderer *renderer = 0;
+static SDL_Texture *screenTexture = 0;
+#endif
 /* Flags to pass to SDL_SetVideoMode */
 static int sdl_videoFlags;
 
@@ -101,6 +106,63 @@ SoundInterface_struct *SNDCoreList[] = {
   &SNDSDL,
   NULL
 };
+
+// expose some controls to javascript to manipulate sound volume
+// volume control
+#if defined(__EMSCRIPTEN__)
+
+extern "C" {
+
+static int sndvolume = 100;
+
+EMSCRIPTEN_KEEPALIVE
+void SetVolume(int volume)
+{
+  sndvolume = std::max(100, volume);
+  sndvolume = std::min(0, sndvolume);
+	#if 1
+	SPU_SetVolume(sndvolume);
+  #else
+  SNDSDLSetVolume(sndvolume);
+  #endif
+}
+
+EMSCRIPTEN_KEEPALIVE
+void DecreaseVolume()
+{
+  #if 1
+  printf("%s:%d:%s initial volume %d\n", __FILE__, __LINE__, __func__, sndvolume);
+  #endif
+	sndvolume = std::max(0, sndvolume - 10);
+  #if 1
+	SPU_SetVolume(sndvolume);
+  #else
+  SNDSDLSetVolume(sndvolume);
+  #endif
+  #if 1
+  printf("%s:%d:%s final volume %d\n", __FILE__, __LINE__, __func__, sndvolume);
+  #endif
+}
+
+EMSCRIPTEN_KEEPALIVE
+void IncreaseVolume()
+{
+  #if 1
+  printf("%s:%d:%s initial volume %d\n", __FILE__, __LINE__, __func__, sndvolume);
+  #endif
+	sndvolume = std::min(100, sndvolume + 10);
+	#if 1
+	SPU_SetVolume(sndvolume);
+  #else
+  SNDSDLSetVolume(sndvolume);
+  #endif
+  #if 1
+  printf("%s:%d:%s final volume %d\n", __FILE__, __LINE__, __func__, sndvolume);
+  #endif
+}
+
+}// extern "C"
+#endif
 
 GPU3DInterface *core3DList[] = {
 &gpu3DNull,
@@ -371,11 +433,21 @@ initGL( GLuint *screen_texture) {
 static void
 resizeWindow( u16 width, u16 height, GLuint *screen_texture) {
 
+  #if !SDL_VERSION_ATLEAST(2,0,0)
+
   int comp_width = 3 * width;
   int comp_height = 2 * height;
   GLenum errCode;
 
+  #if 1
   surface = SDL_SetVideoMode(width, height, 32, sdl_videoFlags);
+  #else
+  surface = SDL_CreateWindow("My Game Window",
+                          SDL_WINDOWPOS_UNDEFINED,
+                          SDL_WINDOWPOS_UNDEFINED,
+                          width, height,
+                          sdl_videoFlags);
+  #endif
   initGL(screen_texture);
 
 #ifdef HAVE_LIBAGG
@@ -416,6 +488,7 @@ resizeWindow( u16 width, u16 height, GLuint *screen_texture) {
     fprintf( stderr, "GL resize failed: %d\n", errCode);
     #endif
   }
+  #endif // !SDL_VERSION_ATLEAST(2,0,0)
 }
 
 
@@ -462,7 +535,9 @@ opengl_Draw(GLuint *texture) {
   glEnd();
 
   /* Flush the drawing to the screen */
+  #if !SDL_VERSION_ATLEAST(2,0,0)
   SDL_GL_SwapBuffers( );
+  #endif
 }
 #endif
 
@@ -551,6 +626,7 @@ SDL_Surface * _SDL_CreateRGBSurfaceFrom(void *pixels,
 
 static void
 Draw( void) {
+  #if !SDL_VERSION_ATLEAST(2,0,0)
   const NDSDisplayInfo &displayInfo = GPU->GetDisplayInfo();
   const size_t pixCount = GPU_FRAMEBUFFER_NATIVE_WIDTH * GPU_FRAMEBUFFER_NATIVE_HEIGHT;
   ColorspaceApplyIntensityToBuffer16<false, false>((u16 *)displayInfo.masterNativeBuffer, pixCount, displayInfo.backlightIntensity[NDSDisplayID_Main]);
@@ -566,7 +642,30 @@ Draw( void) {
   SDL_BlitSurface(rawImage, 0, surface, 0);
   SDL_UpdateRect(surface, 0, 0, 0, 0);
   SDL_FreeSurface(rawImage);
+#else // SDL 2+
 
+  if(!screenTexture)
+  {
+    screenTexture = SDL_CreateTexture(renderer,
+                                SDL_PIXELFORMAT_ARGB8888,
+                                SDL_TEXTUREACCESS_STREAMING,
+                                GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT);
+    if(!screenTexture)
+    {
+      ::fprintf(stderr, "Failure to create screen texture.\n");
+      return;
+    }
+  }
+  const NDSDisplayInfo &displayInfo = GPU->GetDisplayInfo();
+  SDL_UpdateTexture(screenTexture,
+                    NULL,
+                    displayInfo.masterNativeBuffer,
+                    GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof (Uint16));
+  SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
+  SDL_RenderPresent(renderer);
+
+  #endif // !SDL_VERSION_ATLEAST(2,0,0)
+  
   return;
 }
 
@@ -708,7 +807,9 @@ void update_loop()
 
     snprintf( win_title, sizeof(win_title), "Desmume %f", fps);
 
+    #if !SDL_VERSION_ATLEAST(2,0,0)
     SDL_WM_SetCaption( win_title, NULL);
+    #endif
   }
 #endif
 }
@@ -725,8 +826,10 @@ int main(int argc, char ** argv) {
   #endif
 
   /* this holds some info about our display */
+  #if !SDL_VERSION_ATLEAST(2,0,0)
   const SDL_VideoInfo *videoInfo;
-
+  #endif
+  
   /* the firmware settings */
   struct NDS_fw_config_data fw_config;
 
@@ -742,6 +845,7 @@ int main(int argc, char ** argv) {
   }
 
   #if defined(__EMSCRIPTEN__)
+
   // Set some paths standard paths for web version
   strncpy(path.pathToModule, "/", MAX_PATH);
   strncpy(path.pathToSlot1D, "/Slot1D", MAX_PATH);
@@ -889,20 +993,27 @@ int main(int argc, char ** argv) {
               SDL_GetError());
       return 1;
     }
-  SDL_WM_SetCaption("Desmume SDL", NULL);
 
+  #if !SDL_VERSION_ATLEAST(2,0,0)
+  SDL_WM_SetCaption("Desmume SDL", NULL);
+  #endif
+  
+  #if !SDL_VERSION_ATLEAST(2,0,0)
   /* Fetch the video info */
   videoInfo = SDL_GetVideoInfo( );
   if ( !videoInfo ) {
     fprintf( stderr, "Video query failed: %s\n", SDL_GetError( ) );
     exit( -1);
   }
+  #endif
 
   /* This checks if hardware blits can be done */
+  #if !SDL_VERSION_ATLEAST(2,0,0)
   if ( videoInfo->blit_hw )
     sdl_videoFlags |= SDL_HWACCEL;
+  #endif
 
-#ifdef INCLUDE_OPENGL_2D
+#if defined(INCLUDE_OPENGL_2D) && !SDL_VERSION_ATLEAST(2,0,0)
   if ( my_config.opengl_2d) {
     /* the flags to pass to SDL_SetVideoMode */
     sdl_videoFlags  = SDL_OPENGL;          /* Enable OpenGL in SDL */
@@ -940,6 +1051,8 @@ int main(int argc, char ** argv) {
 
   if ( !my_config.opengl_2d) {
 #endif
+
+    #if !SDL_VERSION_ATLEAST(2,0,0)
     sdl_videoFlags |= SDL_SWSURFACE;
     surface = SDL_SetVideoMode(256, 384, 32, sdl_videoFlags);
 
@@ -947,7 +1060,27 @@ int main(int argc, char ** argv) {
       fprintf( stderr, "Video mode set failed: %s\n", SDL_GetError( ) );
       exit( -1);
     }
-#ifdef INCLUDE_OPENGL_2D
+    #else // !SDL_VERSION_ATLEAST(2,0,0)
+    sdl_videoFlags = SDL_WINDOW_OPENGL;
+    screen = SDL_CreateWindow("My Game Window",
+                          SDL_WINDOWPOS_UNDEFINED,
+                          SDL_WINDOWPOS_UNDEFINED,
+                          256, 384,
+                          sdl_videoFlags);
+    if(!screen)
+    {
+      ::fprintf(stderr,"Failure to initialize sdl screen.\n");
+      return -1;
+    }
+    renderer = SDL_CreateRenderer(screen, -1, 0);
+    if(!renderer)
+    {
+      ::fprintf(stderr, "Failure to initialize sdl renderer.\n");
+      return -1;
+    }
+    #endif // !SDL_VERSION_ATLEAST(2,0,0)
+
+#if defined(INCLUDE_OPENGL_2D) && !SDL_VERSION_ATLEAST(2,0,0)
   }
 
   /* set the initial window size */
