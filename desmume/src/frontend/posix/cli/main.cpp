@@ -93,6 +93,7 @@ static float nds_screen_size_ratio = 1.0f;
 #if !SDL_VERSION_ATLEAST(2,0,0)
 static SDL_Surface * surface;
 #else
+static SDL_Surface * surface = 0;
 static SDL_Window* screen = 0;
 static SDL_Renderer *renderer = 0;
 static SDL_Texture *screenTexture = 0;
@@ -644,23 +645,32 @@ Draw( void) {
   SDL_FreeSurface(rawImage);
 #else // SDL 2+
 
-  if(!screenTexture)
+  if(!surface && !screenTexture)
   {
-    screenTexture = SDL_CreateTexture(renderer,
-                                SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT);
-    if(!screenTexture)
+    surface = SDL_CreateRGBSurface(0, GPU_FRAMEBUFFER_NATIVE_WIDTH,
+                                  GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2,
+                                  16, // DEPTH
+                                  0x001F, 0x03E0, 0x7C00, 0);
+    if(!surface)
     {
-      ::fprintf(stderr, "Failure to create screen texture.\n");
-      return;
+      ::fprintf(stderr, "%s%d%s failed to init rgb surface for screen texture.\n", __FILE__, __LINE__, __func__);
+    }
+  
+    screenTexture = SDL_CreateTexture(renderer,
+                                            SDL_PIXELFORMAT_ABGR1555,
+                                            SDL_TEXTUREACCESS_STREAMING,
+                                            GPU_FRAMEBUFFER_NATIVE_WIDTH,
+                                            GPU_FRAMEBUFFER_NATIVE_HEIGHT * 2);
+    if(!screenTexture) {
+      ::fprintf(stderr, "%s%d%s failed to init texture screen texture.\n", __FILE__, __LINE__, __func__);
     }
   }
+
   const NDSDisplayInfo &displayInfo = GPU->GetDisplayInfo();
   SDL_UpdateTexture(screenTexture,
                     NULL,
                     displayInfo.masterNativeBuffer,
-                    GPU_FRAMEBUFFER_NATIVE_WIDTH * sizeof (Uint16));
+                    surface->pitch);
   SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
   SDL_RenderPresent(renderer);
 
@@ -1065,7 +1075,7 @@ int main(int argc, char ** argv) {
     screen = SDL_CreateWindow("My Game Window",
                           SDL_WINDOWPOS_UNDEFINED,
                           SDL_WINDOWPOS_UNDEFINED,
-                          256, 384,
+                          GPU_FRAMEBUFFER_NATIVE_WIDTH, GPU_FRAMEBUFFER_NATIVE_HEIGHT*2,
                           sdl_videoFlags);
     if(!screen)
     {
