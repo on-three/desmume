@@ -4,9 +4,49 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>desmume nintentdo ds emulator</title>
+  <style>
+      .header {
+        background-color:lightgray;
+      }
+      .footer{
+        background-color:lightgray;
+      }
+      .center {
+        padding: 5px 10px 5px 10px;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        /*height: 70vh;*/
+        /*min-width: 60vw;*/
+        /*width: 800px;*/
+      }
+      .game {
+        display: block;
+        padding: 5px 10px 5px 10px;
+      }
+      .padded {
+        min-height: 90px;
+        padding: 5px 10px 5px 10px;
+      }
+      .info {
+        display: inline;
+      }
+      .main {
+        height: 75vh;
+      }
+      .canvas {
+        height: 70vh;
+      }
+  </style>
 <body>
-<img id="loading" src="loading.gif" alt="loading">
-<canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div class="header padded"></div>
+<div class="game main">
+  <div class="center main">
+  <img class="center main" id="loading" src="loading.gif" alt="loading">
+  <canvas class="canvas center" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  </div>
+</div>
+<div class="footer padded"></div>
 <script type='text/javascript'>
 
   function urlVarsToDictionary() {
@@ -122,6 +162,23 @@
   } else {
     // TODO: throw up "no rom specified" message and fail load.
   }
+
+  // handlers for volume up/down
+  function onIncreaseVolume() {
+    // invoke method exposed by C++ to javascript
+    Module.ccall('IncreaseVolume', // name of C function
+    'null', // return type
+    [], // argument types
+    []); // arguments
+  }
+  function onDecreaseVolume() {
+    // invoke method exposed by C++ to javascript
+    Module.ccall('DecreaseVolume', // name of C function
+    'null', // return type
+    [], // argument types
+    []); // arguments
+  }
+
 
   // start our wasm running by
   // 0) Set a "loading" image
