@@ -5,6 +5,9 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>desmume nintentdo ds emulator</title>
   <style>
+      body {
+        font: 16px arial, sans-serif;
+      }
       .header {
         background-color:lightgray;
       }
@@ -37,9 +40,75 @@
       .canvas {
         height: 70vh;
       }
+      .vertical-text {
+	      transform: rotate(90deg);
+	      /*transform-origin: left top 0;*/
+      }
+
+      .controls-slideout {
+        top: 110px;
+        background: #6DAD53;
+        color: white;
+      }
+
+    .slideout {
+			position: fixed;
+			left: 0;
+			width: 35px;
+			padding: 12px 0;
+			text-align: center;
+			-webkit-transition-duration: 0.3s;
+			-moz-transition-duration: 0.3s;
+			-o-transition-duration: 0.3s;
+			transition-duration: 0.3s;
+			-webkit-border-radius: 0 5px 5px 0;
+			-moz-border-radius: 0 5px 5px 0;
+			border-radius: 0 5px 5px 0;
+      min-height: 50px;/*questionable*/
+		}
+		.slideout_inner {
+			position: fixed;
+			left: -250px;
+			width: 200px;
+			padding: 25px;
+			/*height: 130px;*/
+			-webkit-transition-duration: 0.3s;
+			-moz-transition-duration: 0.3s;
+			-o-transition-duration: 0.3s;
+			transition-duration: 0.3s;
+			text-align: left;
+			-webkit-border-radius: 0 0 5px 0;
+			-moz-border-radius: 0 0 5px 0;
+			border-radius: 0 0 5px 0;
+      min-height: 50px;/*questionable*/
+		}
+      .slideout:hover {
+        left: 250px;
+      }
+      .slideout:hover .slideout_inner {
+        left: 0;
+      }
   </style>
 <body>
 <div class="header padded"></div>
+<div class="slideout controls-slideout">
+    <div class="slider-label vertical-text">controls</div>
+    <div class="slideout_inner controls-slideout">
+      [Controls]<br>
+      <span class="button a">A</span> <span class="key">x</span><br>
+      <span class="button b">B</span> <span class="key">z</span><br>
+      <span class="button select">select</span> <span class="key">R shift</span><br>
+      <span class="button start">start</span> <span class="key">enter</span><br>
+      <span class="button right">right</span> <span class="key">right</span><br>
+      <span class="button left">left</span> <span class="key">left</span><br>
+      <span class="button up">up</span> <span class="key">up</span><br>
+      <span class="button down">down</span> <span class="key">down</span><br>
+      <span class="button r">R</span> <spaniv class="key">w</span><br>
+      <span class="button l">L</span> <span class="key">q</span><br>
+      <span class="button x">X</span> <span class="key">s</span><br>
+      <span class="button l">Y</span> <span class="key">a</span><br>
+    </div>
+</div>
 <div class="game main">
   <div class="center main">
   <img class="center main" id="loading" src="loading.gif" alt="loading">
