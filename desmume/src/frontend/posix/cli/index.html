@@ -4,9 +4,118 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>desmume nintentdo ds emulator</title>
+  <style>
+      body {
+        font: 16px arial, sans-serif;
+      }
+      .header {
+        background-color:lightgray;
+      }
+      .footer{
+        background-color:lightgray;
+      }
+      .center {
+        padding: 5px 10px 5px 10px;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        /*height: 70vh;*/
+        /*min-width: 60vw;*/
+        /*width: 800px;*/
+      }
+      .game {
+        display: block;
+        padding: 5px 10px 5px 10px;
+      }
+      .padded {
+        min-height: 90px;
+        padding: 5px 10px 5px 10px;
+      }
+      .info {
+        display: inline;
+      }
+      .main {
+        height: 75vh;
+      }
+      .canvas {
+        height: 70vh;
+      }
+      .vertical-text {
+	      transform: rotate(90deg);
+	      /*transform-origin: left top 0;*/
+      }
+
+      .controls-slideout {
+        top: 110px;
+        background: #6DAD53;
+        color: white;
+      }
+
+    .slideout {
+			position: fixed;
+			left: 0;
+			width: 35px;
+			padding: 12px 0;
+			text-align: center;
+			-webkit-transition-duration: 0.3s;
+			-moz-transition-duration: 0.3s;
+			-o-transition-duration: 0.3s;
+			transition-duration: 0.3s;
+			-webkit-border-radius: 0 5px 5px 0;
+			-moz-border-radius: 0 5px 5px 0;
+			border-radius: 0 5px 5px 0;
+      min-height: 50px;/*questionable*/
+		}
+		.slideout_inner {
+			position: fixed;
+			left: -250px;
+			width: 200px;
+			padding: 25px;
+			/*height: 130px;*/
+			-webkit-transition-duration: 0.3s;
+			-moz-transition-duration: 0.3s;
+			-o-transition-duration: 0.3s;
+			transition-duration: 0.3s;
+			text-align: left;
+			-webkit-border-radius: 0 0 5px 0;
+			-moz-border-radius: 0 0 5px 0;
+			border-radius: 0 0 5px 0;
+      min-height: 50px;/*questionable*/
+		}
+      .slideout:hover {
+        left: 250px;
+      }
+      .slideout:hover .slideout_inner {
+        left: 0;
+      }
+  </style>
 <body>
-<img id="loading" src="loading.gif" alt="loading">
-<canvas class="game" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div class="header padded"></div>
+<div class="slideout controls-slideout">
+    <div class="slider-label vertical-text">controls</div>
+    <div class="slideout_inner controls-slideout">
+      [Controls]<br>
+      <span class="button a">A</span> <span class="key">x</span><br>
+      <span class="button b">B</span> <span class="key">z</span><br>
+      <span class="button select">select</span> <span class="key">R shift</span><br>
+      <span class="button start">start</span> <span class="key">enter</span><br>
+      <span class="button right">right</span> <span class="key">right</span><br>
+      <span class="button left">left</span> <span class="key">left</span><br>
+      <span class="button up">up</span> <span class="key">up</span><br>
+      <span class="button down">down</span> <span class="key">down</span><br>
+      <span class="button r">R</span> <spaniv class="key">w</span><br>
+      <span class="button l">L</span> <span class="key">q</span><br>
+      <span class="button x">X</span> <span class="key">s</span><br>
+      <span class="button l">Y</span> <span class="key">a</span><br>
+    </div>
+</div>
+<div class="game main">
+  <div class="center main">
+  <img class="center main" id="loading" src="loading.gif" alt="loading">
+  <canvas class="canvas center" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  </div>
+</div>
+<div class="footer padded"></div>
 <script type='text/javascript'>
 
   function urlVarsToDictionary() {
@@ -101,6 +210,10 @@
   // Parse our URL parameters and add them as necessary to Module.args
   // This is in lieu of using emscripten --emrun support
   var args = urlVarsToDictionary();
+  if(args && args['CACHEBUST']) {
+    Module.cacheBuest=true;
+    delete args['CACHEBUST'];
+  }
   if(args && args['ROM']) {
     var rom = args['ROM'];
     console.log("Loading rom: ", rom);
@@ -119,6 +232,23 @@
     // TODO: throw up "no rom specified" message and fail load.
   }
 
+  // handlers for volume up/down
+  function onIncreaseVolume() {
+    // invoke method exposed by C++ to javascript
+    Module.ccall('IncreaseVolume', // name of C function
+    'null', // return type
+    [], // argument types
+    []); // arguments
+  }
+  function onDecreaseVolume() {
+    // invoke method exposed by C++ to javascript
+    Module.ccall('DecreaseVolume', // name of C function
+    'null', // return type
+    [], // argument types
+    []); // arguments
+  }
+
+
   // start our wasm running by
   // 0) Set a "loading" image
   // 1) prefetching our .wasm binary and attaching it to our Module
@@ -126,12 +256,19 @@
   // 3) Emscripten will invoke the Module.onRuntimeInitialized() method when game starts to play (used to hide loading screen etc)
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'desmume-cli.wasm', true)
+  var fileUriBase = 'desmume-cli';
+  var wasmFileUri = fileUriBase + '.wasm';
+  var jsFileUri = fileUriBase + '.js'
+  if(Module.cacheBuest) {
+    wasmFileUri += "?CACHEBUST=" + new Date().getTime();
+    jsFileUri += "?CACHEBUST=" + new Date().getTime();
+  }
+  xhr.open('GET', wasmFileUri, true)
   xhr.responseType = 'arraybuffer';
   xhr.onload = function() {
     Module.wasmBinary = xhr.response;
     var script = document.createElement('script');
-    script.src = "desmume-cli.js";
+    script.src = jsFileUri;
     document.body.appendChild(script);
   };
   xhr.send(null);

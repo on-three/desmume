@@ -57,6 +57,8 @@ static volatile u32 soundpos;
 static u32 soundlen;
 static u32 soundbufsize;
 static SDL_AudioSpec audiofmt;
+static int _volume = SDL_MIX_MAXVOLUME;
+static u16 *_silenceBuffer = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 #ifdef _XBOX
@@ -82,6 +84,26 @@ static void MixAudio(void *userdata, Uint8 *stream, int len) {
    int i;
    Uint8 *soundbuf=(Uint8 *)stereodata16;
 
+   #if 0 //SDL_VERSION_ATLEAST(2,0,0)
+    //extern const Uint8 *mixData;
+
+    /* if(!_silenceBuffer) {
+          _silenceBuffer = malloc(len);
+          SDL_memset(_silenceBuffer, 0, len);  // make sure this is silence.
+    } */
+
+    //SDL_memset(stream, 0, len);
+    memset((void*)stream,0, len);
+
+    // mix our audio against the silence, at 50% volume.
+    //SDL_MixAudio(stream, soundbuf, len, _volume);
+    SDL_MixAudioFormat(stream,
+                        soundbuf,
+                        AUDIO_S16SYS,
+                        len,
+                        _volume);
+   #else
+
    for (i = 0; i < len; i++)
    {
       if (soundpos >= soundbufsize)
@@ -90,6 +112,7 @@ static void MixAudio(void *userdata, Uint8 *stream, int len) {
       stream[i] = soundbuf[soundpos];
       soundpos++;
    }
+   #endif
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,6 +242,15 @@ void SNDSDLUnMuteAudio()
 
 void SNDSDLSetVolume(int volume)
 {
+      #if 1
+      printf("%s:%d:%s SDL set volume to %d\n", __FILE__, __LINE__, __func__, volume);
+      #endif
+
+      if(volume < 0) volume = 0;
+      if(volume > 100) volume = 100;
+      double alpha = static_cast<double>(volume)/100.0;
+      
+      _volume = static_cast<int>(SDL_MIX_MAXVOLUME*alpha);
 }
 
 //////////////////////////////////////////////////////////////////////////////
