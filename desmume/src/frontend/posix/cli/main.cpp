@@ -695,7 +695,7 @@ static void desmume_cycle(struct ctrls_event_config * cfg)
     while ( !cfg->sdl_quit &&
         (SDL_PollEvent(&event) || (!cfg->focused && SDL_WaitEvent(&event))))
     #else
-    if( !cfg->sdl_quit && SDL_PollEvent(&event))
+    while( !cfg->sdl_quit && SDL_PollEvent(&event))
     #endif
     {
         process_ctrls_event( event, cfg);
