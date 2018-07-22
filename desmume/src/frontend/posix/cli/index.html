@@ -45,6 +45,16 @@
 	      /*transform-origin: left top 0;*/
       }
 
+      .progress {
+        width: 100%;
+        background-color: grey;
+      }
+      .bar {
+        width: 0%;
+        height: 30px;
+        background-color: rgb(30, 144, 255);
+      }
+
       .controls-slideout {
         top: 110px;
         background: #6DAD53;
@@ -109,11 +119,10 @@
       <span class="button l">Y</span> <span class="key">a</span><br>
     </div>
 </div>
-<div class="game main">
-  <div class="center main">
-  <img class="center main" id="loading" src="loading.gif" alt="loading">
-  <canvas class="canvas center" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-  </div>
+<canvas class="main center" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div id="loading" class="progress">
+  <div id="bar" class="bar"></div>
+</div>>
 </div>
 <div class="footer padded"></div>
 <script type='text/javascript'>
@@ -138,13 +147,57 @@
     preRun: [
     function(){
       // prefetch and load the ROM we'll play to a known path.
+      var _this = this;
       if(this.rom) {
+        this.addRunDependency('fetchRom');
         var rom = this.rom;
         var path = rom.substring(0, rom.lastIndexOf("/") + 1);
         var file = rom.substring(rom.lastIndexOf("/") + 1, rom.length);
-        console.log("Prefetching ROM iage: ",rom);
+        console.log("Prefetching ROM image: ",rom);
+
+        /*
+        We'll "manually" prefetch our rom because we want to track its progress.
+        After it's loaded we'll write it to a known location in our filesystem.
+        TODO: cache it in the IDBFS, which is much faster than the browser cache.
+        */
+       /*
         FS.createPath("/", path, true, true);
         FS.createPreloadedFile(path, file, '.' + rom, true, false);
+       */
+
+        var oReq = new XMLHttpRequest();
+        oReq.responseType = 'arraybuffer';
+        var _bar = document.getElementById('bar');
+
+        oReq.addEventListener("progress", function(evt){
+          var percentComplete = 0;
+          if (evt.lengthComputable) {
+            percentComplete = Math.round(evt.loaded / evt.total * 100);
+          }else{
+            // if server doesn't provide total size (probably gzip'd content)
+            // we assume a 128MB rom and use bytes delivered to compute percent
+            percentComplete = Math.round(evt.loaded / (128*1024*1024) * 100);
+          }
+            if(_bar) _bar.style.width = percentComplete + '%';
+            _bar.style.width = width + '%';
+        });
+        oReq.addEventListener("load", function(evt){
+          console.log("Loaded file: ", rom);
+          var data = new Uint8Array(oReq.response);
+          FS.createPath("/", path, true, true);
+          
+          var stream = FS.open(rom, 'w+');
+          FS.write(stream, data, 0, data.length, 0);
+          FS.close(stream);
+
+          _this.removeRunDependency("fetchRom");
+        });
+        oReq.addEventListener("error", function(evt){
+          console.error("Could not fetch file ", url, " for rom ", rom);
+        });
+        oReq.open('GET', './' + rom);
+        oReq.send();
+
       }
     },
     function() {
