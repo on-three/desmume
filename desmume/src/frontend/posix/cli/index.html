@@ -46,13 +46,25 @@
       }
 
       .progress {
+        position:relative;
         width: 100%;
         background-color: grey;
       }
       .bar {
+        z-index: 1;
+        position: absolute;
         width: 0%;
         height: 30px;
         background-color: rgb(30, 144, 255);
+      }
+
+      .progress span {
+        position:absolute;
+        left:0;
+        width:100%;
+        text-align:center;
+        z-index:2;
+        color:white;
       }
 
       .controls-slideout {
@@ -122,7 +134,8 @@
 <canvas class="main center" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <div id="loading" class="progress">
   <div id="bar" class="bar"></div>
-</div>>
+  <span id="loadText" >Loading Rom 0%</span>
+</div>
 </div>
 <div class="footer padded"></div>
 <script type='text/javascript'>
@@ -168,6 +181,7 @@
         var oReq = new XMLHttpRequest();
         oReq.responseType = 'arraybuffer';
         var _bar = document.getElementById('bar');
+        var _loadText = document.getElementById('loadText');
 
         oReq.addEventListener("progress", function(evt){
           var percentComplete = 0;
@@ -179,6 +193,7 @@
             percentComplete = Math.round(evt.loaded / (128*1024*1024) * 100);
           }
             if(_bar) _bar.style.width = percentComplete + '%';
+            if(_loadText) _loadText.textContent = 'Loading Rom: ' + percentComplete.toString() + '%';
             _bar.style.width = width + '%';
         });
         oReq.addEventListener("load", function(evt){
