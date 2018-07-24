@@ -194,7 +194,6 @@
           }
             if(_bar) _bar.style.width = percentComplete + '%';
             if(_loadText) _loadText.textContent = 'Loading Rom: ' + percentComplete.toString() + '%';
-            _bar.style.width = width + '%';
         });
         oReq.addEventListener("load", function(evt){
           console.log("Loaded file: ", rom);
